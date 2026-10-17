@@ -1,6 +1,6 @@
 <?php
 /**
- * WanderWise Travel Booking - Helper Functions & MySQL Data Access
+ * WanderBharat Travel Booking - Helper Functions & Clean Normalized MySQL Data Access
  */
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -8,6 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/data.php';
 
 /**
  * Format currency amount in Indian Rupees (₹)
@@ -26,8 +27,10 @@ function sanitize($data) {
 /**
  * Get package by ID
  */
-function getPackageById($id, $packages) {
-    foreach ($packages as $pkg) {
+function getPackageById($id, $packagesList = null) {
+    global $packages;
+    $list = $packagesList ?: $packages;
+    foreach ($list as $pkg) {
         if ($pkg['id'] === $id) {
             return $pkg;
         }
@@ -79,79 +82,88 @@ function filterPackages($packages, $category = '', $tier = '', $search = '', $ma
 }
 
 /**
- * Save booking into MySQL Database (with Session & JSON backup)
+ * Save booking into Normalized Clean MySQL Database Tables (bookings + booking_details)
  */
 function saveBooking($bookingData) {
+    global $packages;
+
     // Generate unique booking reference ID
     $bookingData['booking_id'] = 'WW-' . strtoupper(substr(uniqid(), -6));
     $bookingData['created_at'] = date('Y-m-d H:i:s');
     $bookingData['status'] = 'Confirmed';
 
-    // 1. Save to MySQL Database
+    // 1. Save to Clean MySQL Database
     $pdo = getDBConnection();
     if ($pdo) {
         try {
-            $stmt = $pdo->prepare("INSERT INTO `bookings` (
-                `booking_id`, `package_id`, `package_title`, `location`, `country`,
-                `duration`, `hero_image`, `plan_key`, `plan_name`, `plan_price`,
-                `hotel`, `transport`, `travel_date`, `adults`, `children`,
-                `total_guests`, `addons_json`, `base_total`, `addons_total`,
-                `grand_total`, `customer_name`, `customer_email`, `customer_phone`,
-                `customer_nationality`, `customer_passport`, `special_requests`,
-                `payment_method`, `payment_status`, `status`
+            // A. Insert into clean primary 'bookings' table
+            $stmtB = $pdo->prepare("INSERT INTO `bookings` (
+                `booking_id`, `customer_name`, `customer_phone`, `customer_email`,
+                `package_title`, `plan_name`, `travel_date`, `guests`,
+                `total_amount`, `payment_mode`, `status`
             ) VALUES (
-                :booking_id, :package_id, :package_title, :location, :country,
-                :duration, :hero_image, :plan_key, :plan_name, :plan_price,
-                :hotel, :transport, :travel_date, :adults, :children,
-                :total_guests, :addons_json, :base_total, :addons_total,
-                :grand_total, :customer_name, :customer_email, :customer_phone,
-                :customer_nationality, :customer_passport, :special_requests,
-                :payment_method, :payment_status, :status
+                :booking_id, :customer_name, :customer_phone, :customer_email,
+                :package_title, :plan_name, :travel_date, :guests,
+                :total_amount, :payment_mode, :status
             )");
 
-            $stmt->execute([
+            $stmtB->execute([
                 ':booking_id' => $bookingData['booking_id'],
-                ':package_id' => $bookingData['package_id'],
-                ':package_title' => $bookingData['package_title'],
-                ':location' => $bookingData['location'],
-                ':country' => $bookingData['country'],
-                ':duration' => $bookingData['duration'],
-                ':hero_image' => $bookingData['hero_image'] ?? '',
-                ':plan_key' => $bookingData['plan_key'],
-                ':plan_name' => $bookingData['plan_name'],
-                ':plan_price' => $bookingData['plan_price'],
-                ':hotel' => $bookingData['hotel'],
-                ':transport' => $bookingData['transport'],
-                ':travel_date' => $bookingData['travel_date'],
-                ':adults' => $bookingData['adults'],
-                ':children' => $bookingData['children'],
-                ':total_guests' => $bookingData['total_guests'],
-                ':addons_json' => json_encode($bookingData['addons'] ?? []),
-                ':base_total' => $bookingData['base_total'],
-                ':addons_total' => $bookingData['addons_total'],
-                ':grand_total' => $bookingData['grand_total'],
                 ':customer_name' => $bookingData['customer']['full_name'],
-                ':customer_email' => $bookingData['customer']['email'],
                 ':customer_phone' => $bookingData['customer']['phone'],
-                ':customer_nationality' => $bookingData['customer']['nationality'] ?? '',
-                ':customer_passport' => $bookingData['customer']['passport_no'] ?? '',
-                ':special_requests' => $bookingData['customer']['special_requests'] ?? '',
-                ':payment_method' => $bookingData['payment']['method'] ?? 'card',
-                ':payment_status' => $bookingData['payment']['status'] ?? 'Paid / Confirmed',
+                ':customer_email' => $bookingData['customer']['email'],
+                ':package_title' => $bookingData['package_title'],
+                ':plan_name' => $bookingData['plan_name'],
+                ':travel_date' => $bookingData['travel_date'],
+                ':guests' => $bookingData['total_guests'],
+                ':total_amount' => $bookingData['grand_total'],
+                ':payment_mode' => $bookingData['payment']['method'] ?? 'UPI',
                 ':status' => 'Confirmed'
             ]);
+
+            // B. Insert into 'booking_details' table for secondary fields
+            $addonsSummary = [];
+            if (!empty($bookingData['addons'])) {
+                foreach ($bookingData['addons'] as $add) {
+                    $addonsSummary[] = $add['name'];
+                }
+            }
+
+            $stmtD = $pdo->prepare("INSERT INTO `booking_details` (
+                `booking_id`, `package_id`, `adults`, `children`,
+                `base_price`, `addons_price`, `addons_summary`,
+                `city_state`, `id_proof`, `special_requests`
+            ) VALUES (
+                :booking_id, :package_id, :adults, :children,
+                :base_price, :addons_price, :addons_summary,
+                :city_state, :id_proof, :special_requests
+            )");
+
+            $stmtD->execute([
+                ':booking_id' => $bookingData['booking_id'],
+                ':package_id' => $bookingData['package_id'],
+                ':adults' => $bookingData['adults'],
+                ':children' => $bookingData['children'],
+                ':base_price' => $bookingData['base_total'],
+                ':addons_price' => $bookingData['addons_total'],
+                ':addons_summary' => implode(', ', $addonsSummary),
+                ':city_state' => $bookingData['customer']['nationality'] ?? '',
+                ':id_proof' => $bookingData['customer']['passport_no'] ?? '',
+                ':special_requests' => $bookingData['customer']['special_requests'] ?? ''
+            ]);
+
         } catch (PDOException $e) {
             error_log("Failed to insert booking into MySQL: " . $e->getMessage());
         }
     }
 
-    // 2. Save to Session
+    // 2. Save to Session cache
     if (!isset($_SESSION['bookings'])) {
         $_SESSION['bookings'] = [];
     }
     array_unshift($_SESSION['bookings'], $bookingData);
 
-    // 3. Save to JSON File
+    // 3. Save to JSON backup file
     $dataFile = __DIR__ . '/../data/bookings.json';
     $dataDir = dirname($dataFile);
     if (!is_dir($dataDir)) {
@@ -171,56 +183,85 @@ function saveBooking($bookingData) {
 }
 
 /**
- * Format DB row to standard booking array structure
+ * Format DB row to standard array structure for views
  */
 function formatDbBookingRow($row) {
+    global $packages;
+
+    $pkgId = $row['package_id'] ?? 'kashmir-paradise';
+    $pkg = getPackageById($pkgId, $packages) ?: $packages[0];
+
+    // Determine plan key
+    $planName = $row['plan_name'] ?? 'Comfort Plan';
+    $planKey = 'comfort';
+    if (stripos($planName, 'explorer') !== false) $planKey = 'explorer';
+    if (stripos($planName, 'maharaja') !== false || stripos($planName, 'luxury') !== false) $planKey = 'luxury';
+
+    $plan = $pkg['plans'][$planKey] ?? $pkg['plans']['comfort'];
+
+    $addons = [];
+    if (!empty($row['addons_summary'])) {
+        $addons[] = [
+            'name' => $row['addons_summary'],
+            'cost' => (float)($row['addons_price'] ?? 0)
+        ];
+    }
+
     return [
         'id' => $row['id'] ?? null,
         'booking_id' => $row['booking_id'],
         'created_at' => $row['created_at'],
         'status' => $row['status'],
-        'package_id' => $row['package_id'],
+        'package_id' => $pkg['id'],
         'package_title' => $row['package_title'],
-        'location' => $row['location'],
-        'country' => $row['country'],
-        'duration' => $row['duration'],
-        'hero_image' => $row['hero_image'],
-        'plan_key' => $row['plan_key'],
+        'location' => $pkg['location'],
+        'country' => 'India',
+        'duration' => $pkg['duration'],
+        'hero_image' => $pkg['hero_image'],
+        'plan_key' => $planKey,
         'plan_name' => $row['plan_name'],
-        'plan_price' => (float)$row['plan_price'],
-        'hotel' => $row['hotel'],
-        'transport' => $row['transport'],
+        'plan_price' => (float)$plan['discount_price'],
+        'hotel' => $plan['hotel'],
+        'transport' => $plan['transport'],
         'travel_date' => $row['travel_date'],
-        'adults' => (int)$row['adults'],
-        'children' => (int)$row['children'],
-        'total_guests' => (int)$row['total_guests'],
-        'addons' => json_decode($row['addons_json'] ?? '[]', true) ?: [],
-        'base_total' => (float)$row['base_total'],
-        'addons_total' => (float)$row['addons_total'],
-        'grand_total' => (float)$row['grand_total'],
+        'adults' => (int)($row['adults'] ?? $row['guests'] ?? 1),
+        'children' => (int)($row['children'] ?? 0),
+        'total_guests' => (int)($row['guests'] ?? 1),
+        'addons' => $addons,
+        'base_total' => (float)($row['base_price'] ?? ($row['total_amount'] - ($row['addons_price'] ?? 0))),
+        'addons_total' => (float)($row['addons_price'] ?? 0),
+        'grand_total' => (float)$row['total_amount'],
         'customer' => [
             'full_name' => $row['customer_name'],
             'email' => $row['customer_email'],
             'phone' => $row['customer_phone'],
-            'nationality' => $row['customer_nationality'],
-            'passport_no' => $row['customer_passport'],
-            'special_requests' => $row['special_requests']
+            'nationality' => $row['city_state'] ?? 'India',
+            'passport_no' => $row['id_proof'] ?? '',
+            'special_requests' => $row['special_requests'] ?? ''
         ],
         'payment' => [
-            'method' => $row['payment_method'],
-            'status' => $row['payment_status']
+            'method' => $row['payment_mode'] ?? 'UPI',
+            'status' => 'Paid / Confirmed'
         ]
     ];
 }
 
 /**
- * Get all user bookings from MySQL (or fallback to session/JSON)
+ * Get all user bookings from MySQL (Clean JOIN query)
  */
 function getAllBookings() {
     $pdo = getDBConnection();
     if ($pdo) {
         try {
-            $stmt = $pdo->query("SELECT * FROM `bookings` ORDER BY `id` DESC");
+            $sql = "SELECT b.*, 
+                           d.package_id, d.adults, d.children, d.base_price, 
+                           d.addons_price, d.addons_summary, d.city_state, 
+                           d.id_proof, d.special_requests
+                    FROM `bookings` b
+                    LEFT JOIN `booking_details` d ON b.booking_id = d.booking_id
+                    ORDER BY b.id DESC";
+
+            $stmt = $pdo->query($sql);
             $rows = $stmt->fetchAll();
             if (!empty($rows)) {
                 $bookings = [];
@@ -235,7 +276,7 @@ function getAllBookings() {
         }
     }
 
-    // Fallback to session
+    // Fallback to session / JSON
     $bookings = $_SESSION['bookings'] ?? [];
     if (empty($bookings)) {
         $dataFile = __DIR__ . '/../data/bookings.json';
@@ -258,7 +299,16 @@ function getBookingById($id) {
     $pdo = getDBConnection();
     if ($pdo) {
         try {
-            $stmt = $pdo->prepare("SELECT * FROM `bookings` WHERE `booking_id` = :id LIMIT 1");
+            $sql = "SELECT b.*, 
+                           d.package_id, d.adults, d.children, d.base_price, 
+                           d.addons_price, d.addons_summary, d.city_state, 
+                           d.id_proof, d.special_requests
+                    FROM `bookings` b
+                    LEFT JOIN `booking_details` d ON b.booking_id = d.booking_id
+                    WHERE b.booking_id = :id
+                    LIMIT 1";
+
+            $stmt = $pdo->prepare($sql);
             $stmt->execute([':id' => $id]);
             $row = $stmt->fetch();
             if ($row) {
