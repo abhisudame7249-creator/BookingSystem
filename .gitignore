@@ -1,0 +1,12 @@
+# Environment & System
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Sensitive Credentials / Local overrides if any
+# .env
+
+# VS Code personal settings (optional)
+# .vscode/

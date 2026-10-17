@@ -1,0 +1,86 @@
+[
+    {
+        "package_id": "kashmir-paradise",
+        "package_title": "Kashmir Paradise: Srinagar, Gulmarg & Pahalgam",
+        "location": "Jammu & Kashmir (Srinagar, Gulmarg, Pahalgam & Sonamarg)",
+        "country": "India",
+        "duration": "6 Days \/ 5 Nights",
+        "hero_image": "https:\/\/images.unsplash.com\/photo-1595815771614-ade9d652a65d?auto=format&fit=crop&w=1200&q=80",
+        "plan_key": "comfort",
+        "plan_name": "Comfort Plan",
+        "plan_price": 24999,
+        "hotel": "4-Star Luxury Resort in Gulmarg & Super Deluxe Carved Wooden Houseboat",
+        "transport": "Dedicated Private AC Sedan (Dzire \/ Etios) with private chauffeur",
+        "travel_date": "2026-10-24",
+        "adults": 2,
+        "children": 0,
+        "total_guests": 2,
+        "addons": [
+            {
+                "id": "insurance",
+                "name": "Comprehensive Domestic Travel & Medical Insurance",
+                "cost": 1998
+            }
+        ],
+        "base_total": 49998,
+        "addons_total": 1998,
+        "grand_total": 51996,
+        "customer": {
+            "full_name": "Abhishek Sudame",
+            "email": "abhisudame7249@gmail.com",
+            "phone": "7249606221",
+            "nationality": "Barshi",
+            "passport_no": "372955713910",
+            "special_requests": ""
+        },
+        "payment": {
+            "method": "UPI",
+            "status": "Paid \/ Confirmed"
+        },
+        "booking_id": "WW-40977F",
+        "created_at": "2026-10-17 14:29:08",
+        "status": "Confirmed"
+    },
+    {
+        "booking_id": "WW-84920A",
+        "created_at": "2026-10-15 14:32:00",
+        "status": "Confirmed",
+        "package_id": "kashmir-paradise",
+        "package_title": "Kashmir Paradise: Srinagar, Gulmarg & Pahalgam",
+        "location": "Jammu & Kashmir (Srinagar, Gulmarg, Pahalgam & Sonamarg)",
+        "country": "India",
+        "duration": "6 Days \/ 5 Nights",
+        "hero_image": "https:\/\/images.unsplash.com\/photo-1595815771614-ade9d652a65d?auto=format&fit=crop&w=1200&q=80",
+        "plan_key": "comfort",
+        "plan_name": "Comfort Plan",
+        "plan_price": 24999,
+        "hotel": "4-Star Luxury Resort in Gulmarg & Super Deluxe Carved Wooden Houseboat",
+        "transport": "Dedicated Private AC Sedan (Dzire \/ Etios) with private chauffeur",
+        "travel_date": "2026-11-20",
+        "adults": 2,
+        "children": 0,
+        "total_guests": 2,
+        "addons": [
+            {
+                "id": "insurance",
+                "name": "Comprehensive Domestic Travel & Medical Insurance",
+                "cost": 1998
+            }
+        ],
+        "base_total": 49998,
+        "addons_total": 1998,
+        "grand_total": 51996,
+        "customer": {
+            "full_name": "Rahul Sharma",
+            "email": "rahul.sharma@example.com",
+            "phone": "+91 98765 43210",
+            "nationality": "Mumbai, Maharashtra",
+            "passport_no": "Aadhaar: \u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 4821",
+            "special_requests": "Dal lake view houseboat with central heating"
+        },
+        "payment": {
+            "method": "UPI (Google Pay)",
+            "status": "Paid \/ Confirmed"
+        }
+    }
+]
